@@ -16,40 +16,60 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-echo "betterfs-backup  Copyright (C) 2016  Rafael Soares
-This program comes with ABSOLUTELY NO WARRANTY.
-This is free software, and you are welcome to
-redistribute it under certain conditions."
+LICENSE=`dirname $0`/LICENSE
 
-SOURCE="/home"
-TARGET="/media/boss/backup"
+get_dir(){
+  DIR=`zenity --file-selection --directory --title="Select a Directory" 2>/dev/null`
+  case $? in
+    0)  zenity --info --text="\"$DIR\" selected." 2>/dev/null; echo $DIR;;
+    1)  zenity --info --text="No directory selected." 2>/dev/null; exit;;
+    -1) zenity --info --text="An unexpected error has occurred." 2>/dev/null; exit;;
+  esac
+}
 
-set -e
-
-echo "The following subvolume will be backed up: "${SOURCE}" to "${TARGET}""
-
-echo -e "Are you sure you want to continue? (y/N)"
-read option
-if [[ "$option" != "y" ]]; then
-    echo "Aborting!"
-    exit
-fi
-SRC=$(ls -1 "${SOURCE}")
-TG=$(ls -1 "${TARGET}")
-if [[ -d "${SOURCE}/backup" ]] ; then
-    echo "It's an incremental backup!"
-    sudo btrfs subvolume snapshot -r "${SOURCE}" "${SOURCE}/backup-new"
+backup(){
+  if [[ -d "$1/backup" ]] ; then
+    zenity --info --text="Previous backup detected! Making an incremental backup." 2>/dev/null
+    (
+    btrfs subvolume snapshot -r "$1" "$1/backup-new"
     sync
-    sudo btrfs send -v -p "${SOURCE}/backup" "${SOURCE}/backup-new" | btrfs receive -v "${TARGET}"
-    sudo btrfs subvolume delete -C "${SOURCE}/backup"
-    sudo mv "${SOURCE}/backup-new" "${SOURCE}/backup"
-    sudo btrfs subvolume delete -C "${TARGET}/backup"
-    sudo mv "${TARGET}/backup-new" "${TARGET}/backup"
-else
-    echo "It's the first backup!"   
-    sudo btrfs subvolume snapshot -r "${SOURCE}" "${SOURCE}/backup"
+    btrfs send -v -p "$1/backup" "$1/backup-new" | btrfs receive -v "$2"
+    btrfs subvolume delete -C "$1/backup"
+    mv "$1/backup-new" "$1/backup"
+    btrfs subvolume delete -C "$2/backup"
+    mv "$2/backup-new" "$2/backup"
+    ) |
+    zenity --progress --title="betterfs-backup" --text="Copying..." --percentage=0
+    if [ "$?" = -1 ] ; then
+      zenity --error --text="An unexpected error has occurred."
+    fi
+  else
+    zenity --info --text="It's the first backup! It may take long." 2>/dev/null
+    (
+    btrfs subvolume snapshot -r "$1" "$1/backup"
     sync
-    sudo btrfs send -v "${SOURCE}/backup" | btrfs receive -v "${TARGET}"
-fi
+    btrfs send -v "$1/backup" | btrfs receive -v "$2"
+    ) |
+    zenity --progress --title="Backup in progress" --text="Copying..." --percentage=0
+    if [ "$?" = -1 ] ; then
+      zenity --error --text="An unexpected error has occurred."
+    fi
+  fi
+}
 
-echo "All done!"
+main(){
+  zenity --info --text="You are about to make a backup of a btrfs subvolume. First select the SOURCE subvolume." 2>/dev/null
+  SOURCE=`get_dir`
+  zenity --info --text="Now select the TARGET subvolume." 2>/dev/null
+  TARGET=`get_dir`
+  zenity --question --text="The following subvolume will be backed up: \"$SOURCE\" to \"$TARGET\". Are you sure you wish to proceed?" 2>/dev/null
+  backup $SOURCE $TARGET
+}
+
+zenity --text-info --title="License" --filename=$LICENSE --checkbox="I read and accept the terms." 2>/dev/null
+
+case $? in
+  0)  main;;
+  1)  zenity --info --text="You must accept the license to use this software." 2>/dev/null;;
+  -1) zenity --error --text="An unexpected error has occurred." 2>/dev/null;;
+esac
