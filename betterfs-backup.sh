@@ -19,17 +19,19 @@
 LICENSE=$(dirname "$0")/LICENSE
 
 get_dir(){
-  DIR=$(zenity --file-selection --directory --title="Select a Directory" 2>/dev/null)
+  set -e
+  DIR=$(zenity --file-selection --title="Select a directory" --directory 2>/dev/null)
   case $? in
-    0)  zenity --info --text="\"$DIR\" selected." 2>/dev/null; echo "$DIR";;
-    1)  zenity --info --text="No directory selected." 2>/dev/null; exit;;
-    -1) zenity --info --text="An unexpected error has occurred." 2>/dev/null; exit;;
+    0)  zenity --info --title="betterfs-backup" --text="\"$DIR\" selected." 2>/dev/null; echo "$DIR";;
+    1)  zenity --error --title="betterfs-backup" --text="No directory selected. Please select a directory." 2>/dev/null; get_dir;;
+    -1) zenity --error --title="betterfs-backup" --text="An unexpected error has occurred. Quitting." 2>/dev/null;;
   esac
 }
 
 backup(){
-  if [[ -d "$1/backup" ]] ; then
-    zenity --info --text="Previous backup detected! Making an incremental backup." 2>/dev/null
+  set -e
+  if [ -d "$1/backup" ] ; then
+    zenity --info --title="betterfs-backup" --text="Previous backup detected! Making an incremental backup." 2>/dev/null
     (
     btrfs subvolume snapshot -r "$1" "$1/backup-new"
     sync
@@ -39,37 +41,44 @@ backup(){
     btrfs subvolume delete -C "$2/backup"
     mv "$2/backup-new" "$2/backup"
     ) |
-    zenity --progress --title="betterfs-backup" --text="Copying..." --percentage=0
+    zenity --progress --title="betterfs-backup" --text="Copying..." --percentage=0 2>/dev/null
     if [ "$?" = -1 ] ; then
-      zenity --error --text="An unexpected error has occurred."
+      zenity --error --title="betterfs-backup" --text="An unexpected error has occurred." 2>/dev/null
     fi
   else
-    zenity --info --text="It's the first backup! It may take long." 2>/dev/null
+    zenity --info --title="betterfs-backup" --text="It's the first backup! It may take long." 2>/dev/null
     (
     btrfs subvolume snapshot -r "$1" "$1/backup"
     sync
     btrfs send -v "$1/backup" | btrfs receive -v "$2"
     ) |
-    zenity --progress --title="Backup in progress" --text="Copying..." --percentage=0
+    zenity --progress --title="betterfs-backup" --text="Backing up..." --percentage=0 2>/dev/null
     if [ "$?" = -1 ] ; then
-      zenity --error --text="An unexpected error has occurred."
+      zenity --error --title="betterfs-backup" --text="An unexpected error has occurred." 2>/dev/null
     fi
   fi
 }
 
 main(){
-  zenity --info --text="You are about to make a backup of a btrfs subvolume. First select the SOURCE subvolume." 2>/dev/null
+  zenity --info --title="betterfs-backup" \
+         --text="You are about to make a backup of a btrfs subvolume. First select the SOURCE subvolume." 2>/dev/null
   SOURCE=$(get_dir)
-  zenity --info --text="Now select the TARGET subvolume." 2>/dev/null
+  zenity --info --title="betterfs-backup" --text="Now select the TARGET subvolume." 2>/dev/null
   TARGET=$(get_dir)
-  zenity --question --text="The following subvolume will be backed up: \"$SOURCE\" to \"$TARGET\". Are you sure you wish to proceed?" 2>/dev/null
-  backup "$SOURCE" "$TARGET"
+  zenity --question --title="betterfs-backup" --default-cancel \
+         --text="The following subvolume will be backed up: \"$SOURCE\" to \"$TARGET\". Are you sure you wish to proceed?" 2>/dev/null
+  case $? in
+    0)  backup "$SOURCE" "$TARGET";;
+    1)  zenity --info --title="betterfs-backup" --text="Quitting." 2>/dev/null;;
+    -1) zenity --error --title="betterfs-backup" --text="An unexpected error has occurred. Quitting." 2>/dev/null; exit;;
+  esac
+
 }
 
 zenity --text-info --title="License" --filename="$LICENSE" --checkbox="I read and accept the terms." 2>/dev/null
 
 case $? in
   0)  main;;
-  1)  zenity --info --text="You must accept the license to use this software." 2>/dev/null;;
-  -1) zenity --error --text="An unexpected error has occurred." 2>/dev/null;;
+  1)  zenity --info --title="License" --text="You must accept the license to use this software." 2>/dev/null;;
+  -1) zenity --error --title="License" --text="An unexpected error has occurred." 2>/dev/null;;
 esac
