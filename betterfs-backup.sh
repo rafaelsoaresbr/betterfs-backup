@@ -16,12 +16,12 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-LICENSE=`dirname $0`/LICENSE
+LICENSE=$(dirname "$0")/LICENSE
 
 get_dir(){
-  DIR=`zenity --file-selection --directory --title="Select a Directory" 2>/dev/null`
+  DIR=$(zenity --file-selection --directory --title="Select a Directory" 2>/dev/null)
   case $? in
-    0)  zenity --info --text="\"$DIR\" selected." 2>/dev/null; echo $DIR;;
+    0)  zenity --info --text="\"$DIR\" selected." 2>/dev/null; echo "$DIR";;
     1)  zenity --info --text="No directory selected." 2>/dev/null; exit;;
     -1) zenity --info --text="An unexpected error has occurred." 2>/dev/null; exit;;
   esac
@@ -59,14 +59,14 @@ backup(){
 
 main(){
   zenity --info --text="You are about to make a backup of a btrfs subvolume. First select the SOURCE subvolume." 2>/dev/null
-  SOURCE=`get_dir`
+  SOURCE=$(get_dir)
   zenity --info --text="Now select the TARGET subvolume." 2>/dev/null
-  TARGET=`get_dir`
+  TARGET=$(get_dir)
   zenity --question --text="The following subvolume will be backed up: \"$SOURCE\" to \"$TARGET\". Are you sure you wish to proceed?" 2>/dev/null
-  backup $SOURCE $TARGET
+  backup "$SOURCE" "$TARGET"
 }
 
-zenity --text-info --title="License" --filename=$LICENSE --checkbox="I read and accept the terms." 2>/dev/null
+zenity --text-info --title="License" --filename="$LICENSE" --checkbox="I read and accept the terms." 2>/dev/null
 
 case $? in
   0)  main;;
