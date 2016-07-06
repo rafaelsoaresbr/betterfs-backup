@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -e
 
 #    betterfs-backup - Simple script for incremental backup with btrfs
 #    Copyright (C) 2016  Rafael Soares
@@ -19,7 +19,6 @@
 LICENSE=$(dirname "$0")/LICENSE
 
 get_dir(){
-  set -e
   DIR=$(zenity --file-selection --title="Select a directory" --directory 2>/dev/null)
   case $? in
     0)  zenity --info --title="betterfs-backup" --text="\"$DIR\" selected." 2>/dev/null; echo "$DIR";;
@@ -29,7 +28,6 @@ get_dir(){
 }
 
 backup(){
-  set -e
   if [ -d "$1/backup" ] ; then
     zenity --info --title="betterfs-backup" --text="Previous backup detected! Making an incremental backup." 2>/dev/null
     (
@@ -70,9 +68,8 @@ main(){
   case $? in
     0)  backup "$SOURCE" "$TARGET";;
     1)  zenity --info --title="betterfs-backup" --text="Quitting." 2>/dev/null;;
-    -1) zenity --error --title="betterfs-backup" --text="An unexpected error has occurred. Quitting." 2>/dev/null; exit;;
+    -1) zenity --error --title="betterfs-backup" --text="An unexpected error has occurred. Quitting." 2>/dev/null;;
   esac
-
 }
 
 zenity --text-info --title="License" --filename="$LICENSE" --checkbox="I read and accept the terms." 2>/dev/null
