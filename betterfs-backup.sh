@@ -63,13 +63,13 @@ main(){
   SOURCE=$(get_dir)
   zenity --info --title="betterfs-backup" --text="Now select the TARGET subvolume." 2>/dev/null
   TARGET=$(get_dir)
-  zenity --question --title="betterfs-backup" --default-cancel \
-         --text="The following subvolume will be backed up: \"$SOURCE\" to \"$TARGET\". Are you sure you wish to proceed?" 2>/dev/null
-  case $? in
-    0)  backup "$SOURCE" "$TARGET";;
-    1)  zenity --info --title="betterfs-backup" --text="Quitting." 2>/dev/null;;
-    -1) zenity --error --title="betterfs-backup" --text="An unexpected error has occurred. Quitting." 2>/dev/null;;
-  esac
+  if $(zenity --question --title="betterfs-backup" --default-cancel \
+         --text="The following subvolume will be backed up: \"$SOURCE\" to \"$TARGET\". Are you sure you wish to proceed?" 2>/dev/null)
+  then
+    backup "$SOURCE" "$TARGET"
+  else
+    zenity --info --title="betterfs-backup" --text="Quitting." 2>/dev/null
+  fi
 }
 
 zenity --text-info --title="License" --filename="$LICENSE" --checkbox="I read and accept the terms." 2>/dev/null
