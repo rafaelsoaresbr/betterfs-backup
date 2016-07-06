@@ -1,2 +1,7 @@
 # betterfs-backup
-Simple script for incremental backup with btrfs
+Simple gui script for incremental backup with btrfs
+
+## Usage
+```
+sudo ./betterfs-backup.sh
+```
